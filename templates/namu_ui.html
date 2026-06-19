@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Namu AI — Chat</title>
+    <meta name="description" content="Namu AI Agent — AI-powered chat with scraping, OSINT, downloads and more.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+        :root{
+            --bg:#0d1117;--bg2:#161b22;--bg3:#1c2128;--bg4:#21262d;--bg5:#282e36;
+            --border:#30363d;--border2:#3d444d;
+            --t1:#e6edf3;--t2:#8b949e;--t3:#6e7681;
+            --accent:#e8651a;--accent2:#f47832;--accent-g:rgba(232,101,26,.2);--accent-s:rgba(232,101,26,.1);
+            --ok:#3fb950;--err:#f85149;--warn:#d29922;--info:#58a6ff;
+            --r:12px;--rs:8px;--rx:6px;--tr:.2s cubic-bezier(.4,0,.2,1);
+            --font:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+            --mono:'JetBrains Mono','Cascadia Code',monospace;
+        }
+        html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t1);overflow:hidden;-webkit-font-smoothing:antialiased}
+        .app{display:flex;height:100vh;width:100vw}
+
+        /* SIDEBAR */
+        .sb{width:280px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+        .sb-hd{padding:20px 16px 16px;border-bottom:1px solid var(--border)}
+        .sb-brand{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+        .sb-brand .logo{width:36px;height:36px;background:linear-gradient(135deg,var(--accent),#ff9a5c);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;box-shadow:0 2px 12px var(--accent-g)}
+        .sb-brand h1{font-size:18px;font-weight:700}.sb-brand .ver{font-size:11px;color:var(--t3)}
+        .m-sel label{display:block;font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+        .m-sel select{width:100%;padding:8px 32px 8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rx);color:var(--t1);font-size:12px;font-family:var(--font);cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;transition:border var(--tr)}
+        .m-sel select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-g)}
+        .m-load{font-size:11px;color:var(--t3);padding:8px 0;display:flex;align-items:center;gap:6px}
+        .m-load .sp{width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+        .sb-acts{padding:12px 16px;display:flex;flex-direction:column;gap:4px}
+        .sb-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;background:transparent;border:1px solid transparent;border-radius:var(--rs);color:var(--t2);font-size:13px;font-family:var(--font);cursor:pointer;transition:all var(--tr);width:100%;text-align:left}
+        .sb-btn:hover{background:var(--bg4);color:var(--t1)}
+        .sb-btn.nc{background:var(--accent-s);border-color:rgba(232,101,26,.25);color:var(--accent);font-weight:500}
+        .sb-btn.nc:hover{background:var(--accent-g);border-color:var(--accent)}
+        .sb-btn .ic{font-size:16px;width:20px;text-align:center}
+
+        /* Chat history sidebar */
+        .ch-list{flex:1;overflow-y:auto;padding:8px 16px;border-top:1px solid var(--border)}
+        .ch-list::-webkit-scrollbar{width:4px}.ch-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+        .ch-lbl{font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin:8px 0 6px}
+        .ch-empty{font-size:12px;color:var(--t3);padding:8px 0;font-style:italic}
+        .ch-item{display:flex;align-items:center;gap:8px;padding:8px 10px;background:transparent;border:1px solid transparent;border-radius:var(--rx);color:var(--t2);font-size:12px;font-family:var(--font);cursor:pointer;transition:all var(--tr);width:100%;text-align:left;margin-bottom:2px}
+        .ch-item:hover{background:var(--bg4);color:var(--t1)}
+        .ch-item.active{background:var(--bg4);border-color:var(--border)}
+        .ch-item .ch-title{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .ch-item .ch-del{opacity:0;background:none;border:none;color:var(--t3);cursor:pointer;font-size:14px;padding:2px;transition:all var(--tr)}
+        .ch-item:hover .ch-del{opacity:1}
+        .ch-item .ch-del:hover{color:var(--err)}
+
+        .sb-ft{padding:12px 16px;border-top:1px solid var(--border)}
+        .sb-ft .st{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t3)}
+        .st-dot{width:8px;height:8px;background:var(--ok);border-radius:50%;box-shadow:0 0 6px rgba(63,185,80,.5)}
+        .st-dot.off{background:var(--err);box-shadow:0 0 6px rgba(248,81,73,.5)}
+
+        /* MAIN */
+        .main{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
+        .hdr{padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--bg2)}
+        .hdr .tt{font-size:14px;font-weight:600}.hdr .sub{font-size:12px;color:var(--t3)}
+        .hdr-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+        .model-badge{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);background:var(--bg3);padding:5px 12px;border-radius:20px;border:1px solid var(--border)}
+        .model-badge .mb-dot{width:6px;height:6px;background:var(--ok);border-radius:50%;flex-shrink:0}
+
+        /* Live Clock Widget */
+        .hdr-clock{display:flex;align-items:center;gap:10px;padding:5px 14px;background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(139,92,246,.08));border:1px solid rgba(99,102,241,.2);border-radius:20px;cursor:default;position:relative;transition:all var(--tr)}
+        .hdr-clock:hover{border-color:rgba(99,102,241,.4);box-shadow:0 0 12px rgba(99,102,241,.15)}
+        .hdr-clock .clk-pulse{width:6px;height:6px;background:#22c55e;border-radius:50%;animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+        .hdr-clock .clk-time{font-family:var(--mono);font-size:13px;font-weight:600;color:#a78bfa;letter-spacing:.5px;white-space:nowrap}
+        .hdr-clock .clk-tz{font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#6e7681;white-space:nowrap}
+        .hdr-clock .clk-date{font-size:10px;color:var(--t3);white-space:nowrap}
+
+        .msgs{flex:1;overflow-y:auto;padding:24px 0;scroll-behavior:smooth}
+        .msgs::-webkit-scrollbar{width:6px}.msgs::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+        /* Welcome */
+        .welc{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px;text-align:center;animation:fadeIn .5s ease}
+        .welc .wl{width:80px;height:80px;background:linear-gradient(135deg,var(--accent),#ff9a5c);border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:36px;margin-bottom:24px;box-shadow:0 8px 32px var(--accent-g);animation:float 3s ease-in-out infinite}
+        .welc h2{font-size:28px;font-weight:700;margin-bottom:8px;background:linear-gradient(135deg,var(--t1),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+        .welc p{color:var(--t2);font-size:14px;max-width:480px;line-height:1.6;margin-bottom:32px}
+        .qa-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;width:100%;max-width:520px}
+        .qa{padding:14px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--rs);color:var(--t2);font-size:13px;font-family:var(--font);cursor:pointer;text-align:left;transition:all var(--tr);line-height:1.4}
+        .qa:hover{border-color:var(--accent);background:var(--accent-s);color:var(--t1);transform:translateY(-1px)}
+        .qa .qi{font-size:18px;margin-bottom:6px;display:block}
+
+        /* Messages */
+        .msg{padding:4px 24px;animation:slideIn .25s ease}
+        .msg-in{max-width:780px;margin:0 auto;display:flex;gap:14px;padding:16px 0}
+        .msg.user .msg-in{flex-direction:row-reverse}
+        .av{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0}
+        .msg.user .av{background:linear-gradient(135deg,#30638e,#4a90d9);color:#fff}
+        .msg.assistant .av{background:linear-gradient(135deg,var(--accent),#ff9a5c);color:#fff}
+        .msg-body{flex:1;min-width:0}
+        .msg-role{font-size:12px;font-weight:600;margin-bottom:4px;color:var(--t3);display:flex;align-items:center;gap:8px}
+        .msg.user .msg-role{text-align:right;justify-content:flex-end}
+        .msg-role .mr-model{font-size:10px;font-weight:400;color:var(--t3);background:var(--bg3);padding:2px 6px;border-radius:4px}
+        .msg-text{font-size:14px;line-height:1.7;color:var(--t1);word-break:break-word}
+        .msg.user .msg-text{background:#1a2332;padding:12px 16px;border-radius:16px 16px 4px 16px;border:1px solid rgba(74,144,217,.15)}
+        .msg.assistant .msg-text{padding:4px 0}
+        .msg-text p{margin:0 0 10px}.msg-text p:last-child{margin:0}
+        .msg-text pre{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rx);padding:14px;overflow-x:auto;font-family:var(--mono);font-size:13px;margin:10px 0;line-height:1.5}
+        .msg-text code{background:var(--bg3);padding:2px 6px;border-radius:4px;font-family:var(--mono);font-size:12px;color:var(--accent2)}
+        .msg-text pre code{background:none;padding:0;color:var(--t1)}
+        .msg-text ul,.msg-text ol{padding-left:20px;margin:8px 0}.msg-text li{margin:4px 0;line-height:1.6}
+        .msg-text strong{color:var(--t1);font-weight:600}
+        .msg-text a{color:var(--accent);text-decoration:none}.msg-text a:hover{text-decoration:underline}
+        .msg-text blockquote{border-left:3px solid var(--accent);padding-left:14px;margin:10px 0;color:var(--t2);font-style:italic}
+        .msg-text h1,.msg-text h2,.msg-text h3{margin:16px 0 8px;font-weight:600}
+        .msg-text h1{font-size:20px}.msg-text h2{font-size:17px}.msg-text h3{font-size:15px}
+
+        /* File attachments in messages */
+        .msg-files{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+        .msg-file{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:16px;font-size:11px;color:var(--t2)}
+        .msg-img-preview{margin-top:10px;max-width:300px;border-radius:var(--rs);border:1px solid var(--border);overflow:hidden}
+        .msg-img-preview img{width:100%;display:block;cursor:pointer;transition:transform var(--tr)}
+        .msg-img-preview img:hover{transform:scale(1.02)}
+        .msg-doc-preview{margin-top:10px;padding:12px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;gap:12px;max-width:320px}
+        .msg-doc-preview .doc-icon{font-size:28px;flex-shrink:0}
+        .msg-doc-preview .doc-info{flex:1;min-width:0}
+        .msg-doc-preview .doc-name{font-size:13px;font-weight:500;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .msg-doc-preview .doc-meta{font-size:11px;color:var(--t3);margin-top:2px}
+
+        /* Activity Panel */
+        .activity{margin-top:10px;border:1px solid var(--border);border-radius:var(--rs);overflow:hidden;background:var(--bg);font-size:12px}
+        .act-header{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;user-select:none;background:var(--bg3);transition:background var(--tr)}
+        .act-header:hover{background:var(--bg4)}
+        .act-header .act-icon{font-size:14px;transition:transform var(--tr)}
+        .act-header.open .act-icon{transform:rotate(90deg)}
+        .act-header .act-label{font-weight:500;color:var(--t2);flex:1}
+        .act-header .act-count{font-size:10px;color:var(--t3);background:var(--bg);padding:2px 6px;border-radius:8px}
+        .act-mini{display:flex;align-items:center;gap:6px}
+        .act-dots{display:flex;gap:3px}
+        .act-dot{width:6px;height:6px;border-radius:50%}
+        .act-dot.s{background:var(--ok)}.act-dot.e{background:var(--err)}.act-dot.r{background:var(--warn);animation:pulse 1s infinite}
+        .act-body{display:none;padding:0}
+        .act-body.open{display:block}
+        .act-step{padding:8px 12px;border-top:1px solid var(--border);display:flex;align-items:flex-start;gap:8px;font-family:var(--mono);font-size:11px;color:var(--t2);line-height:1.5}
+        .act-step .as-icon{flex-shrink:0;width:16px;text-align:center;font-size:12px}
+        .act-step .as-text{flex:1;white-space:pre-wrap;word-break:break-all}
+        .act-step.success .as-icon{color:var(--ok)}.act-step.error .as-icon{color:var(--err)}
+        .act-step.running .as-icon{color:var(--warn)}.act-step.thinking .as-icon{color:var(--info)}
+
+        /* Typing */
+        .typing{padding:4px 24px;animation:fadeIn .3s ease}
+        .typ-in{max-width:780px;margin:0 auto;display:flex;gap:14px;padding:16px 0}
+        .typ-dots{display:flex;align-items:center;gap:5px;padding:12px 16px}
+        .typ-dots span{width:8px;height:8px;background:var(--t3);border-radius:50%;animation:bounce 1.4s infinite}
+        .typ-dots span:nth-child(2){animation-delay:.2s}.typ-dots span:nth-child(3){animation-delay:.4s}
+
+        /* Input */
+        .inp-area{padding:16px 24px 20px;background:var(--bg);border-top:1px solid var(--border)}
+        .inp-wrap{max-width:780px;margin:0 auto}
+        .atts{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+        .att-chip{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;font-size:12px;color:var(--t2);animation:slideIn .2s ease}
+        .att-chip .att-thumb{width:24px;height:24px;border-radius:4px;object-fit:cover}
+        .att-chip .att-rm{background:none;border:none;color:var(--t3);cursor:pointer;font-size:14px;padding:0 2px;transition:color var(--tr)}
+        .att-chip .att-rm:hover{color:var(--err)}
+        .inp-box{display:flex;align-items:flex-end;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:8px 12px;transition:all var(--tr)}
+        .inp-box:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-g)}
+        .inp-box textarea{flex:1;background:none;border:none;outline:none;color:var(--t1);font-size:14px;font-family:var(--font);resize:none;max-height:150px;min-height:40px;line-height:1.5;padding:8px 4px}
+        .inp-box textarea::placeholder{color:var(--t3)}
+        .inp-acts{display:flex;align-items:center;gap:2px;padding-bottom:4px}
+        .inp-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:none;border:none;color:var(--t3);cursor:pointer;border-radius:var(--rx);transition:all var(--tr);font-size:18px}
+        .inp-btn:hover{color:var(--t2);background:var(--bg4)}
+        .inp-btn.send{background:var(--accent);color:#fff;border-radius:8px}
+        .inp-btn.send:hover{background:var(--accent2);transform:scale(1.05)}
+        .inp-btn.send:disabled{opacity:.4;cursor:not-allowed;transform:none}
+        .inp-hint{text-align:center;font-size:11px;color:var(--t3);margin-top:8px}
+        #fi-media,#fi-doc{display:none}
+
+        /* Help overlay */
+        .help-ov{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:100;display:none;animation:fadeIn .2s ease}
+        .help-ov.on{display:flex;align-items:center;justify-content:center}
+        .help-pn{background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:600px;max-width:90vw;max-height:80vh;overflow-y:auto;padding:32px;animation:slideIn .3s ease;box-shadow:0 16px 48px rgba(0,0,0,.4);position:relative}
+        .help-pn h2{font-size:20px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+        .help-pn h3{font-size:14px;color:var(--accent);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.5px}
+        .help-pn ul{list-style:none;padding:0;margin:0 0 12px}
+        .help-pn li{padding:6px 0;font-size:13px;color:var(--t2);line-height:1.5}
+        .help-pn li code{background:var(--bg3);padding:2px 6px;border-radius:4px;font-family:var(--mono);font-size:12px;color:var(--accent2)}
+        .help-cls{position:absolute;top:16px;right:16px;background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer}.help-cls:hover{color:var(--t1)}
+
+        /* Image lightbox */
+        .lb{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);z-index:200;display:none;align-items:center;justify-content:center;cursor:zoom-out}
+        .lb.on{display:flex}.lb img{max-width:90vw;max-height:90vh;border-radius:8px;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+
+        /* Toast */
+        .toasts{position:fixed;top:16px;right:16px;z-index:1000;display:flex;flex-direction:column;gap:8px}
+        .toast{padding:12px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);color:var(--t1);font-size:13px;box-shadow:0 4px 16px rgba(0,0,0,.3);animation:slideIn .3s ease;max-width:360px}
+        .toast.error{border-left:3px solid var(--err)}.toast.success{border-left:3px solid var(--ok)}
+
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+        @keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+        @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+        @media(max-width:768px){.sb{display:none}.msg-in{max-width:100%}.inp-wrap{max-width:100%}}
+    </style>
+</head>
+<body>
+<div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sb">
+        <div class="sb-hd">
+            <div class="sb-brand"><div class="logo">N</div><div><h1>Namu AI</h1><div class="ver">v1.0 — Agent</div></div></div>
+            <div class="m-sel">
+                <label>Model</label>
+                <div id="m-load" class="m-load"><div class="sp"></div>Loading models...</div>
+                <select id="m-select" style="display:none"></select>
+            </div>
+        </div>
+        <div class="sb-acts">
+            <button class="sb-btn nc" onclick="newChat()"><span class="ic">✦</span>New Chat</button>
+            <button class="sb-btn" onclick="toggleHelp()"><span class="ic">?</span>Help & Commands</button>
+            <a class="sb-btn" href="http://127.0.0.1:8000/" target="_blank" style="text-decoration:none"><span class="ic">🕐</span>Clock & News Dashboard</a>
+            <button class="sb-btn" onclick="toggleNewsPanel()"><span class="ic">📰</span>Quick News Search</button>
+        </div>
+        <!-- Inline News Search Panel -->
+        <div id="news-panel" style="display:none;padding:10px 16px;border-top:1px solid var(--border)">
+            <div style="font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">News Search</div>
+            <div style="display:flex;gap:6px;margin-bottom:8px">
+                <input id="news-q" type="text" placeholder="Search news..." value="latest news India" style="flex:1;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rx);color:var(--t1);font-size:12px;font-family:var(--font);outline:none" onkeydown="if(event.key==='Enter')doNewsSidebar()">
+                <button onclick="doNewsSidebar()" style="padding:7px 12px;background:var(--accent);border:none;border-radius:var(--rx);color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--font)">Go</button>
+            </div>
+            <div id="news-results" style="max-height:240px;overflow-y:auto;font-size:12px;color:var(--t2)"></div>
+        </div>
+        <div class="ch-list" id="ch-list">
+            <div class="ch-lbl">Chat Sessions</div>
+            <div class="ch-empty" id="ch-empty">No saved chats yet</div>
+        </div>
+        <div class="sb-ft"><div class="st"><span class="st-dot" id="st-dot"></span><span id="st-txt">Connected</span></div></div>
+    </aside>
+
+    <!-- MAIN CHAT -->
+    <main class="main">
+        <div class="hdr">
+            <div><div class="tt">Namu AI Agent</div><div class="sub">Scraping · OSINT · Downloads · Analysis</div></div>
+            <div class="hdr-right">
+                <div class="hdr-clock" id="hdr-clock" title="Live IST Clock — Click for Dashboard" onclick="window.open('http://127.0.0.1:8000/','_blank')" style="cursor:pointer">
+                    <span class="clk-pulse"></span>
+                    <span class="clk-time" id="clk-time">--:--:--</span>
+                    <span class="clk-tz">IST</span>
+                    <span class="clk-date" id="clk-date"></span>
+                </div>
+                <div class="model-badge" id="hdr-model"><span class="mb-dot"></span><span id="hdr-model-txt">Loading...</span></div>
+            </div>
+        </div>
+        <div class="msgs" id="msgs">
+            <div class="welc" id="welc">
+                <div class="wl">🤖</div>
+                <h2>Welcome to Namu AI</h2>
+                <p>I can scrape websites, download media, run OSINT scans, generate reports, and more. Just type naturally.</p>
+                <div class="qa-grid">
+                    <button class="qa" onclick="qSend('Scrape https://example.com and create an HTML report')"><span class="qi">🌐</span>Scrape & create report</button>
+                    <button class="qa" onclick="qSend('Search the web for latest AI news')"><span class="qi">🔍</span>Search the web</button>
+                    <button class="qa" onclick="qSend('Run OSINT domain recon on example.com')"><span class="qi">🕵️</span>OSINT domain recon</button>
+                    <button class="qa" onclick="qSend('What can you do? Show me all available tools')"><span class="qi">⚡</span>Show all capabilities</button>
+                </div>
+            </div>
+        </div>
+        <div class="inp-area">
+            <div class="inp-wrap">
+                <div class="atts" id="atts"></div>
+                <div class="inp-box">
+                    <div class="inp-acts">
+                        <button class="inp-btn" onclick="document.getElementById('fi-media').click()" title="Attach media">📎</button>
+                        <button class="inp-btn" onclick="document.getElementById('fi-doc').click()" title="Attach document">📄</button>
+                    </div>
+                    <textarea id="inp" placeholder="Ask Namu anything..." rows="1" onkeydown="kd(event)" oninput="ar(this)"></textarea>
+                    <div class="inp-acts"><button class="inp-btn send" id="sbtn" onclick="send()" title="Send">➤</button></div>
+                </div>
+                <div class="inp-hint">Enter to send · Shift+Enter new line · 📎 Media · 📄 Documents</div>
+            </div>
+        </div>
+        <input type="file" id="fi-media" accept="image/*,video/*,audio/*" multiple onchange="fsel(this,'media')">
+        <input type="file" id="fi-doc" accept=".pdf,.doc,.docx,.txt,.rtf,.csv,.json,.xml,.html,.md,.py,.js,.ts,.log" multiple onchange="fsel(this,'document')">
+    </main>
+</div>
+
+<!-- Help overlay -->
+<div class="help-ov" id="help-ov" onclick="if(event.target===this)toggleHelp()">
+    <div class="help-pn">
+        <button class="help-cls" onclick="toggleHelp()">✕</button>
+        <h2>🤖 Namu AI — Help</h2>
+        <h3>Scraping & Data</h3>
+        <ul><li><code>Scrape example.com</code> → Web scraping</li><li><code>Extract images from [URL]</code> → Image extraction</li><li><code>Convert [URL] to markdown</code> → Page to text</li></ul>
+        <h3>Downloads</h3>
+        <ul><li><code>Download video from [URL]</code> → Video download</li><li><code>Download audio from [URL]</code> → Audio download</li></ul>
+        <h3>OSINT</h3>
+        <ul><li><code>Run OSINT on example.com</code> → Domain recon</li><li><code>Search username john_doe</code> → Username search</li><li><code>Full recon on [target]</code> → Full auto-recon</li></ul>
+        <h3>Analysis & OS Tools</h3>
+        <ul><li><code>Search the web for [query]</code> → Live web search (Serper)</li><li><code>Open file [path]</code> → Opens with default app</li><li><code>Open folder [path]</code> → Windows Explorer</li><li><code>Launch VS Code</code> → App launcher</li></ul>
+        <h3>File Attachments</h3>
+        <ul><li>📎 Attach images, videos, audio</li><li>📄 Attach PDFs, docs, code files</li><li>Files are sent as context with your message</li></ul>
+    </div>
+</div>
+
+<!-- Image lightbox -->
+<div class="lb" id="lightbox" onclick="this.classList.remove('on')"><img id="lb-img" src=""></div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+/* ================================================================
+   STATE
+   ================================================================ */
+const SK = 'namu_ai_chats';
+const S = { msgs: [], atts: [], loading: false, model: '', chatId: null, uploadedPreviews: {} };
+const $m = document.getElementById('msgs');
+const $inp = document.getElementById('inp');
+const $sbtn = document.getElementById('sbtn');
+const $atts = document.getElementById('atts');
+const $msel = document.getElementById('m-select');
+
+/* ================================================================
+   INIT
+   ================================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+    loadModels();
+    const saved = getChats();
+    if (saved.length > 0) {
+        const last = saved[saved.length - 1];
+        S.chatId = last.id;
+        S.msgs = last.messages || [];
+        if (S.msgs.length > 0) { hideWelc(); S.msgs.forEach(m => renderMsg(m.role, m.content, m.files, m.activity, m.model, false)); }
+    } else { S.chatId = Date.now().toString(); }
+    renderChatList();
+    $inp.focus();
+});
+
+/* ================================================================
+   LOCALSTORAGE
+   ================================================================ */
+function getChats() { try { return JSON.parse(localStorage.getItem(SK) || '[]'); } catch { return []; } }
+
+function saveChat() {
+    if (!S.msgs.length) return;
+    const chats = getChats();
+    const idx = chats.findIndex(c => c.id === S.chatId);
+    const d = { id: S.chatId, title: S.msgs[0]?.content?.slice(0, 40) || 'New Chat', messages: S.msgs, updated: Date.now() };
+    if (idx >= 0) chats[idx] = d; else chats.push(d);
+    while (chats.length > 30) chats.shift();
+    localStorage.setItem(SK, JSON.stringify(chats));
+    renderChatList();
+}
+
+function deleteChat(id, ev) {
+    ev.stopPropagation();
+    const chats = getChats().filter(c => c.id !== id);
+    localStorage.setItem(SK, JSON.stringify(chats));
+    if (id === S.chatId) { S.chatId = Date.now().toString(); S.msgs = []; $m.innerHTML = ''; showWelc(); }
+    renderChatList();
+    toast('Chat deleted', 'success');
+}
+
+function renderChatList() {
+    const $c = document.getElementById('ch-list');
+    const $e = document.getElementById('ch-empty');
+    $c.querySelectorAll('.ch-item').forEach(el => el.remove());
+    const chats = getChats();
+    if (!chats.length) { $e.style.display = ''; return; }
+    $e.style.display = 'none';
+    chats.slice().reverse().forEach(ch => {
+        const d = document.createElement('div');
+        d.className = 'ch-item' + (ch.id === S.chatId ? ' active' : '');
+        d.innerHTML = `<span class="ic">💬</span><span class="ch-title">${esc(ch.title || 'Chat')}</span><button class="ch-del" onclick="deleteChat('${ch.id}',event)" title="Delete">🗑</button>`;
+        d.onclick = () => loadChat(ch.id);
+        $c.appendChild(d);
+    });
+}
+
+function loadChat(id) {
+    const ch = getChats().find(c => c.id === id);
+    if (!ch) return;
+    S.chatId = id; S.msgs = ch.messages || [];
+    $m.innerHTML = '';
+    if (S.msgs.length) { hideWelc(); S.msgs.forEach(m => renderMsg(m.role, m.content, m.files, m.activity, m.model, false)); }
+    else showWelc();
+    renderChatList();
+    fetch('/api/history', { method: 'DELETE' }).catch(() => {});
+}
+
+/* ================================================================
+   MODELS
+   ================================================================ */
+async function loadModels() {
+    try {
+        const r = await fetch('/api/models');
+        const d = await r.json();
+        $msel.innerHTML = '';
+        (d.models || []).forEach(m => { const o = document.createElement('option'); o.value = m.id; o.textContent = m.name; o.title = m.description || ''; $msel.appendChild(o); });
+        document.getElementById('m-load').style.display = 'none';
+        $msel.style.display = 'block';
+        const mr = await fetch('/api/model'); const md = await mr.json();
+        if (md.model) { S.model = md.model; $msel.value = md.model; updHdrModel(); }
+        $msel.addEventListener('change', setModel);
+        setSt(true);
+    } catch { document.getElementById('m-load').textContent = 'Failed to load'; setSt(false); }
+}
+
+async function setModel() {
+    const mid = $msel.value;
+    try {
+        const r = await fetch('/api/model', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: mid }) });
+        const d = await r.json();
+        if (d.success) { S.model = mid; updHdrModel(); toast(`Model: ${$msel.selectedOptions[0].textContent}`, 'success'); }
+    } catch { toast('Failed to switch model', 'error'); }
+}
+
+function updHdrModel() {
+    const sel = $msel.selectedOptions[0];
+    document.getElementById('hdr-model-txt').textContent = sel ? sel.textContent : S.model;
+}
+
+/* ================================================================
+   CHAT
+   ================================================================ */
+async function send() {
+    const text = $inp.value.trim();
+    if (!text || S.loading) return;
+    hideWelc();
+
+    const fileNames = S.atts.map(a => ({ name: a.file.name, type: a.type, preview: a.preview || null }));
+    addMsg('user', text, fileNames);
+    $inp.value = ''; ar($inp);
+
+    for (const att of S.atts) {
+        try { await uploadFile(att.file, att.type); } catch (e) { toast(`Upload failed: ${att.file.name}`, 'error'); }
+    }
+    S.atts = []; renderAtts();
+
+    S.loading = true; $sbtn.disabled = true;
+    showTyping();
+
+    try {
+        const r = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text }) });
+        if (!r.ok) { const e = await r.json().catch(() => ({})); hideTyping(); addMsg('assistant', `❌ Error (${r.status}): ${e.error || 'Unknown'}`); S.loading = false; $sbtn.disabled = false; return; }
+        const d = await r.json();
+        hideTyping();
+        console.log('[Namu] Response:', d);
+        if (d.error) { addMsg('assistant', `❌ ${d.error}`); }
+        else {
+            let txt = d.response || d.tool_output || 'Request processed.';
+            const activity = d.activity || [];
+            const model = d.model || S.model;
+            addMsg('assistant', txt, [], activity, model);
+        }
+    } catch (e) {
+        hideTyping();
+        addMsg('assistant', `❌ Connection error: ${e.message}`);
+        setSt(false);
+        setTimeout(() => { fetch('/api/model').then(() => setSt(true)).catch(() => {}); }, 3000);
+    }
+    S.loading = false; $sbtn.disabled = false; $inp.focus();
+}
+
+function qSend(t) { $inp.value = t; send(); }
+
+/* ================================================================
+   NEW CHAT
+   ================================================================ */
+async function newChat() {
+    saveChat();
+    try { await fetch('/api/history', { method: 'DELETE' }); } catch {}
+    S.chatId = Date.now().toString(); S.msgs = [];
+    $m.innerHTML = ''; showWelc(); renderChatList();
+    toast('New chat started', 'success');
+}
+
+/* ================================================================
+   MESSAGES
+   ================================================================ */
+function addMsg(role, content, files = [], activity = [], model = '') {
+    S.msgs.push({ role, content, files, activity, model });
+    renderMsg(role, content, files, activity, model, true);
+    saveChat();
+}
+
+function renderMsg(role, content, files = [], activity = [], model = '', scroll = true) {
+    const d = document.createElement('div');
+    d.className = `msg ${role}`;
+    const av = role === 'user' ? 'Y' : 'N';
+    const lbl = role === 'user' ? 'You' : 'Namu';
+
+    // Model badge for assistant
+    const modelHtml = (role === 'assistant' && model) ? `<span class="mr-model">${esc(shortModel(model))}</span>` : '';
+
+    // File previews
+    let filesHtml = '';
+    if (files && files.length) {
+        const previews = files.map(f => {
+            if (f.type === 'media' && f.preview) {
+                return `<div class="msg-img-preview"><img src="${f.preview}" alt="${esc(f.name)}" onclick="openLb(this.src)"></div>`;
+            } else if (f.type === 'media') {
+                return `<span class="msg-file">🖼️ ${esc(f.name)}</span>`;
+            } else {
+                const icon = docIcon(f.name);
+                const size = f.size ? formatSize(f.size) : '';
+                return `<div class="msg-doc-preview"><span class="doc-icon">${icon}</span><div class="doc-info"><div class="doc-name">${esc(f.name)}</div><div class="doc-meta">${size}</div></div></div>`;
+            }
+        });
+        filesHtml = `<div class="msg-files">${previews.join('')}</div>`;
+    }
+
+    // Activity panel
+    let actHtml = '';
+    if (activity && activity.length) {
+        const dots = activity.map(a => {
+            if (a.status === 'success') return '<span class="act-dot s"></span>';
+            if (a.status === 'error') return '<span class="act-dot e"></span>';
+            return '<span class="act-dot r"></span>';
+        }).join('');
+
+        const steps = activity.map(a => {
+            const cls = a.status || 'running';
+            let icon = '⚡';
+            if (a.status === 'success') icon = '✅';
+            else if (a.status === 'error') icon = '❌';
+            else if (a.status === 'thinking') icon = '🧠';
+            else if (a.status === 'warn') icon = '⚠️';
+            else if (a.type === 'subagent') icon = '🤖';
+            return `<div class="act-step ${cls}"><span class="as-icon">${icon}</span><span class="as-text">${esc(a.detail || '')}</span></div>`;
+        }).join('');
+
+        const toolNames = [...new Set(activity.filter(a => a.tool).map(a => a.tool))];
+        const summary = toolNames.length ? toolNames.join(', ') : `${activity.length} steps`;
+
+        actHtml = `
+        <div class="activity">
+            <div class="act-header" onclick="toggleAct(this)">
+                <span class="act-icon">▶</span>
+                <span class="act-label">Activity: ${esc(summary)}</span>
+                <div class="act-mini"><div class="act-dots">${dots}</div></div>
+                <span class="act-count">${activity.length}</span>
+            </div>
+            <div class="act-body">${steps}</div>
+        </div>`;
+    }
+
+    d.innerHTML = `
+        <div class="msg-in">
+            <div class="av">${av}</div>
+            <div class="msg-body">
+                <div class="msg-role">${lbl}${modelHtml}</div>
+                <div class="msg-text">${renderMd(content)}</div>
+                ${filesHtml}
+                ${actHtml}
+            </div>
+        </div>`;
+    const w = $m.querySelector('.welc'); if (w) w.remove();
+    $m.appendChild(d);
+    if (scroll) scrollBot();
+}
+
+function toggleAct(el) {
+    el.classList.toggle('open');
+    el.nextElementSibling.classList.toggle('open');
+}
+
+function shortModel(m) {
+    if (!m) return '';
+    // "arcee-ai/trinity-large-preview:free" -> "Trinity Large"
+    const parts = m.split('/');
+    const name = parts[parts.length - 1].split(':')[0];
+    return name.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).slice(0, 30);
+}
+
+function docIcon(name) {
+    const ext = (name.split('.').pop() || '').toLowerCase();
+    const map = { pdf: '📕', doc: '📘', docx: '📘', txt: '📝', csv: '📊', json: '📋', xml: '📋', html: '🌐', md: '📝', py: '🐍', js: '📜', ts: '📜', log: '📄' };
+    return map[ext] || '📄';
+}
+
+function formatSize(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+    return (b / 1048576).toFixed(1) + ' MB';
+}
+
+function openLb(src) {
+    document.getElementById('lb-img').src = src;
+    document.getElementById('lightbox').classList.add('on');
+}
+
+/* ================================================================
+   MARKDOWN
+   ================================================================ */
+function renderMd(text) {
+    if (!text) return '';
+    let h = esc(text);
+    h = h.replace(/```(\w*)\n([\s\S]*?)```/g, (_, l, c) => `<pre><code>${c.trim()}</code></pre>`);
+    h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+    h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    h = h.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    h = h.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    h = h.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+    h = h.replace(/^[-•] (.+)$/gm, '<li>$1</li>');
+    h = h.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+    h = h.replace(/<\/ul>\s*<ul>/g, '');
+    h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+    h = h.replace(/(^|[^"'])(https?:\/\/[^\s<]+)/g, '$1<a href="$2" target="_blank">$2</a>');
+    h = h.replace(/\n\n/g, '</p><p>');
+    h = h.replace(/\n/g, '<br>');
+    h = '<p>' + h + '</p>';
+    h = h.replace(/<p>\s*<\/p>/g, '');
+    ['h1','h2','h3','pre','ul','blockquote'].forEach(t => { h = h.replace(new RegExp(`<p>(<${t}>)`, 'g'), '$1'); h = h.replace(new RegExp(`(</${t}>)</p>`, 'g'), '$1'); });
+    return h;
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ================================================================
+   TYPING
+   ================================================================ */
+function showTyping() {
+    const d = document.createElement('div'); d.className = 'typing'; d.id = 'typing';
+    d.innerHTML = `<div class="typ-in"><div class="av" style="background:linear-gradient(135deg,var(--accent),#ff9a5c);color:#fff">N</div><div class="typ-dots"><span></span><span></span><span></span></div></div>`;
+    $m.appendChild(d); scrollBot();
+}
+function hideTyping() { const el = document.getElementById('typing'); if (el) el.remove(); }
+
+/* ================================================================
+   FILE UPLOAD
+   ================================================================ */
+function fsel(input, type) {
+    Array.from(input.files).forEach(file => {
+        if (file.size > 50 * 1024 * 1024) { toast(`Too large: ${file.name}`, 'error'); return; }
+        const att = { file, type, preview: null };
+        // Generate local preview for images
+        if (type === 'media' && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = () => { att.preview = reader.result; renderAtts(); };
+            reader.readAsDataURL(file);
+        }
+        S.atts.push(att);
+    });
+    renderAtts(); input.value = '';
+}
+
+function renderAtts() {
+    $atts.innerHTML = '';
+    S.atts.forEach((att, i) => {
+        const chip = document.createElement('div'); chip.className = 'att-chip';
+        const icon = att.type === 'media' ? '🖼️' : docIcon(att.file.name);
+        const name = att.file.name.length > 20 ? att.file.name.slice(0, 17) + '...' : att.file.name;
+        let thumbHtml = '';
+        if (att.preview) thumbHtml = `<img class="att-thumb" src="${att.preview}">`;
+        chip.innerHTML = `${thumbHtml}<span>${icon}</span>${esc(name)}<button class="att-rm" onclick="rmAtt(${i})">✕</button>`;
+        $atts.appendChild(chip);
+    });
+}
+
+function rmAtt(i) { S.atts.splice(i, 1); renderAtts(); }
+
+async function uploadFile(file, type) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async () => {
+            const b64 = reader.result.split(',')[1];
+            try {
+                const r = await fetch('/api/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ filename: file.name, data: b64, type }) });
+                const d = await r.json();
+                if (d.success) {
+                    // Store preview URL for the file
+                    if (d.file && d.file.preview_url) S.uploadedPreviews[file.name] = d.file.preview_url;
+                    toast(`📎 ${file.name} attached`, 'success');
+                    resolve(d);
+                } else reject(new Error(d.error));
+            } catch (e) { reject(e); }
+        };
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+    });
+}
+
+/* ================================================================
+   UTILITIES
+   ================================================================ */
+function kd(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }
+function ar(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 150) + 'px'; }
+function scrollBot() { requestAnimationFrame(() => { $m.scrollTop = $m.scrollHeight; }); }
+function hideWelc() { const w = $m.querySelector('.welc'); if (w) w.remove(); }
+function showWelc() {
+    $m.innerHTML = `<div class="welc"><div class="wl">🤖</div><h2>Welcome to Namu AI</h2>
+    <p>I can scrape websites, download media, run OSINT scans, generate reports, and more.</p>
+    <div class="qa-grid">
+        <button class="qa" onclick="qSend('Scrape https://example.com and create an HTML report')"><span class="qi">🌐</span>Scrape & report</button>
+        <button class="qa" onclick="qSend('Search the web for latest AI news')"><span class="qi">🔍</span>Search the web</button>
+        <button class="qa" onclick="qSend('Run OSINT domain recon on example.com')"><span class="qi">🕵️</span>OSINT recon</button>
+        <button class="qa" onclick="qSend('What can you do? Show me all available tools')"><span class="qi">⚡</span>All capabilities</button>
+    </div></div>`;
+}
+function toggleHelp() { document.getElementById('help-ov').classList.toggle('on'); }
+function setSt(on) { document.getElementById('st-dot').className = on ? 'st-dot' : 'st-dot off'; document.getElementById('st-txt').textContent = on ? 'Connected' : 'Disconnected'; }
+function toast(msg, type = '') { const c = document.getElementById('toasts'), t = document.createElement('div'); t.className = `toast ${type}`; t.textContent = msg; c.appendChild(t); setTimeout(() => t.remove(), 4000); }
+
+/* ================================================================
+   LIVE CLOCK (from FastAPI at :8000)
+   ================================================================ */
+const NAMU_API = 'http://127.0.0.1:8000';
+let _clockFails = 0;
+
+async function fetchClock() {
+    try {
+        const r = await fetch(`${NAMU_API}/time`, {mode:'cors'});
+        const d = await r.json();
+        if (d.success) {
+            document.getElementById('clk-time').textContent = d.time_12h || d.time;
+            document.getElementById('clk-date').textContent = d.day_of_week ? d.day_of_week.slice(0,3) + ', ' + d.date : d.date;
+            _clockFails = 0;
+        }
+    } catch {
+        _clockFails++;
+        if (_clockFails > 3) {
+            document.getElementById('clk-time').textContent = new Date().toLocaleTimeString('en-IN', {timeZone:'Asia/Kolkata',hour12:true});
+            document.getElementById('clk-date').textContent = new Date().toLocaleDateString('en-IN', {timeZone:'Asia/Kolkata',weekday:'short',month:'short',day:'numeric'});
+        }
+    }
+}
+setInterval(fetchClock, 1000);
+fetchClock();
+
+/* ================================================================
+   SIDEBAR NEWS SEARCH (from FastAPI at :8000)
+   ================================================================ */
+function toggleNewsPanel() {
+    const p = document.getElementById('news-panel');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+async function doNewsSidebar() {
+    const q = document.getElementById('news-q').value.trim();
+    if (!q) return;
+    const box = document.getElementById('news-results');
+    box.innerHTML = '<div style="text-align:center;padding:16px;color:var(--t3)"><div class="sp" style="width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 8px"></div>Searching...</div>';
+    try {
+        const r = await fetch(`${NAMU_API}/news?q=${encodeURIComponent(q)}`, {mode:'cors'});
+        const d = await r.json();
+        if (d.success && d.results && d.results.length) {
+            box.innerHTML = d.results.map((n,i) =>
+                `<a href="${esc(n.link)}" target="_blank" style="display:block;padding:8px 0;border-bottom:1px solid var(--border);text-decoration:none;color:inherit;transition:background .15s">
+                <div style="font-size:12px;font-weight:600;color:var(--t1);line-height:1.4;margin-bottom:2px">${esc(n.title)}</div>
+                ${n.snippet ? `<div style="font-size:11px;color:var(--t3);line-height:1.4;margin-bottom:2px">${esc(n.snippet).slice(0,120)}</div>` : ''}
+                <div style="font-size:10px;color:var(--accent);font-weight:500">${esc(n.source||'')} ${n.date?'· '+esc(n.date):''}</div>
+                </a>`
+            ).join('');
+        } else {
+            box.innerHTML = '<div style="padding:12px;color:var(--err);font-size:12px">No results found.</div>';
+        }
+    } catch (e) {
+        box.innerHTML = `<div style="padding:12px;color:var(--err);font-size:12px">API offline. Start namu_api.py first.<br><code style="font-size:10px;color:var(--t3)">${esc(e.message)}</code></div>`;
+    }
+}
+
+/* Send news query to Namu AI chat instead */
+function sendNewsToChat(query) {
+    toggleNewsPanel();
+    $inp.value = `Search the web for: ${query}`;
+    send();
+}
+</script>
+</body>
+</html>

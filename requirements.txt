@@ -1,0 +1,27 @@
+# Core
+aiohttp>=3.9.0
+aiofiles>=23.2.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+requests>=2.31.0
+
+# Selenium
+selenium>=4.15.0
+webdriver-manager>=4.0.0
+
+# Image processing
+Pillow>=10.0.0
+
+# Video download (highly recommended)
+yt-dlp>=2024.1.0
+
+# Rich terminal UI
+rich>=13.0.0
+tqdm>=4.66.0
+
+# Environment / API keys
+python-dotenv>=1.0.0
+sherlock-project>=0.14.3
+
+# Web Scraping framework
+scrapling[all]>=0.4

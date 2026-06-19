@@ -1,0 +1,54 @@
+# Environment / Secrets
+.env
+.env.local
+.env.*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Database
+*.db
+*.sqlite3
+
+# Logs
+*.log
+ai_action_log.txt
+
+# Scraper & OSINT Output folders
+videos/
+audio/
+images/
+text/
+subtitles/
+thumbnails/
+temp/
+cookies/
+cache/
+OSINT/
+scraped_data/
+ai_data/
+ai_reports/
+
+# Self-Improvement AI Backups
+siai_backups/
